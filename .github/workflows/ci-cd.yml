@@ -1,0 +1,65 @@
+name: Deploy Lambda Functions
+# Specifies the name of the workflow, visible in the GitHub Actions UI.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+# Triggers the workflow when code is pushed or a pull request is made to the 'main' branch.
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Defines a job named 'deploy' that runs on the latest Ubuntu runner.
+
+    strategy:
+      matrix:
+        lambda:
+          - name: hello_world
+            path: lambdas/hello_world
+          # - name: hello_world_two
+          #   path: lambdas/hello_world_two
+    # Defines a matrix to handle multiple Lambda functions. Each entry specifies a Lambda function name and its directory path. Uncomment the 'hello_world_two' lines to include a second function.
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+    # Checks out the repository code so the workflow can access it. Uses version 4 of the checkout action.
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    # Sets up Python 3.11 on the runner, required for the AWS CLI and any Python-based Lambda functions.
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install awscli
+    # Installs the AWS CLI, which is used to interact with AWS Lambda for deployment.
+
+    - name: Zip Lambda code
+      working-directory: ${{ matrix.lambda.path }}
+      run: |
+        zip -r ${{ matrix.lambda.name }}.zip .
+    # Zips the contents of the Lambda function’s directory (e.g., lambdas/hello_world) into a file named after the Lambda (e.g., hello_world.zip). The working-directory ensures zipping happens in the correct folder.
+
+    - name: Move ZIP to root for deployment
+      run: |
+        mv ${{ matrix.lambda.path }}/${{ matrix.lambda.name }}.zip .
+    # Moves the zipped file to the repository root, making it easier to reference in the next step.
+
+    - name: Deploy to AWS Lambda
+      run: |
+        aws lambda update-function-code \
+          --function-name ${{ matrix.lambda.name }} \
+          --zip-file fileb://${{ matrix.lambda.name }}.zip \
+          --region ${{ secrets.AWS_REGION }}
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+    # Uses the AWS CLI to update the code of the specified Lambda function in AWS. The function must already exist in AWS. Secrets (AWS credentials and region) are stored in GitHub repository settings.
