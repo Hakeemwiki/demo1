@@ -20,8 +20,8 @@ jobs:
         lambda:
           - name: hello_world
             path: lambdas/hello_world
-          # - name: hello_world_two
-          #   path: lambdas/hello_world_two
+          - name: hello_world_two
+            path: lambdas/hello_world_two
     # Defines a matrix to handle multiple Lambda functions. Each entry specifies a Lambda function name and its directory path. Uncomment the 'hello_world_two' lines to include a second function.
 
     steps:
